@@ -26,9 +26,9 @@
 # 7. **ELIMINATE REDUNDANCIES AMONG PROGRAMS**
 #     1. **Read OneCodeTo... results**. **Input:** Directory containing elem_stored.csv files. **Output:** Dictionary, Integer: num of elements in Dictionary.
 #     
-#     2. **Read LTRharvest results and iliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
+#     2. **Read LTRharvest results and eliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
 #     
-#     3. **Read TransposonPSI results and iliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
+#     3. **Read TransposonPSI results and eliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
 #     
 # 8. **PRINT NON-REDUNDANT OUTPUT FILE, ONE PER PROGRAM**. **Input:** Dictionary. **Output:** Three text files.
 # 
@@ -293,7 +293,7 @@ def find_result_dirs_per_genome_code():
 
 # <codecell>
 
-def parse_online_censor(filename):
+def parse_online_censor(filename, pident_cutoff, score_cutoff):
     censor_classifications = {}
     keep_parsing = True
     lines = open(filename,'r').readlines()
@@ -309,14 +309,18 @@ def parse_online_censor(filename):
             l = line.rstrip()
             name = l.split('\t')[0][:-1]
             Class = l.split('\t')[6][:-1]
-            score = l.split('\t')[-1]
-            if name in censor_classifications.keys():
+            score = int(l.split('\t')[-1])
+            pident = float(l.split('\t')[-3])
+            if (name in censor_classifications.keys() and
+                score >= score_cutoff and pident >= pident_cutoff):
                 if score > censor_classifications[name]['score']:
                     censor_classifications[name]['score'] = score
                     censor_classifications[name]['Class'] = Class
-            else:
+                    censor_classifications[name]['pident'] = pident
+            elif score >= score_cutoff and pident >= pident_cutoff:
                 censor_classifications[name] = {'score': score,
-                                                'Class': Class}
+                                                'Class': Class,
+                                                'pident': pident}
     return censor_classifications
             
 def print_online_censor(censor_classifications, filename):
@@ -354,13 +358,20 @@ def run_OneCodeToFindThemAll(pooled_RM_outputs_dir, #The directory containing re
                             ltr_dict_filename, # name of intermediate file
                             output_filename, 
                             genome_assembly,
+                            unknown=False,
+                            strict=True,
                             build_dictionary = '/home/amir/homeWork/RM_package/OCtFtA/build_dictionary.pl',
                             octfta = '/home/amir/homeWork/RM_package/OCtFtA/one_code_to_find_them_all.pl',
                             ):
     cline = build_dictionary+' --rm '+pooled_RM_outputs_dir+' --unknown > '+ ltr_dict_filename
     os.system(cline)
     
-    cline = octfta+' --rm '+pooled_RM_outputs_dir+' --ltr '+ltr_dict_filename+' --unknown --fasta '+genome_assembly+' > '+output_filename
+    cline = octfta+' --rm '+pooled_RM_outputs_dir+' --ltr '+ltr_dict_filename+' --fasta '+genome_assembly
+    if unknown:
+        cline += ' --unknown'
+    if strict:
+        cline += ' --strict'
+    cline +=' > '+output_filename
     os.system(cline)
 
 # <markdowncell>
@@ -408,8 +419,11 @@ def parse_ocfa_elem_stored(pooled_RM_outputs_dir):
 
     # Get all the elements in the OCTFTA output
     for filename in filenames:
+        taken_elements = {}
+        discarded_elements = {}
         for line in open(filename, 'r').readlines():
             if line[:3] == '###':
+                
                 reference = {'program': 'RMOCFA',
                              'record': line}
                 contig = line.split('\t')[4]
@@ -418,14 +432,41 @@ def parse_ocfa_elem_stored(pooled_RM_outputs_dir):
                 length = line.split('\t')[7]
                 element = line.split('\t')[9]
                 family = line.split('\t')[10]
-                TEs['taken']['element' + str(serial)] = {'ref': reference,
-                                             'contig': contig,
-                                             'start': int(start),
-                                             'end': int(end),
-                                             'length': int(length),
-                                             'lower_tx_level': element,
-                                             'higher_tx_level': family}
+                
+                max_score = max([int(i) for i in line.split('\t')[0][3:].split('/')])
+                
+                take = True
+                
+                # make sure the locus is not covered and if it is check which match is better
+                for element in taken_elements:
+                    prex_el_line = taken_elements[element]['ref']['record']
+                    prex_el_score = max([int(i) for i in prex_el_line.split('\t')[0][3:].split('/')])
+                    prex_el_contig = taken_elements[element]['contig']
+                    prex_el_start = taken_elements[element]['start']
+                    prex_el_end = taken_elements[element]['end']
+                    if (contig == prex_el_contig and 
+                        (prex_el_start < start < prex_el_end or
+                         prex_el_start < end < prex_el_end or
+                         start < prex_el_start < end or
+                         start < prex_el_end <end)):
+                        if max_score > prex_el_score:
+                            discarded_elements[element] = taken_elements.pop(element, None)
+                        else:
+                            take = False
+                        
+                if take:
+                    taken_elements['element' + str(serial)] = {'ref': reference,
+                                                              'contig': contig,
+                                                              'start': int(start),
+                                                              'end': int(end),
+                                                              'length': int(length),
+                                                              'lower_tx_level': element,
+                                                              'higher_tx_level': family}
+
+                    
                 serial += 1
+        TEs['taken'].update(taken_elements)
+        TEs['discarded'].update(discarded_elements)
     return TEs, serial
 
 # <markdowncell>
@@ -478,8 +519,11 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
             ## or shorter (then place the ltr hit in discraded)
             placed = False
             for key in TEs_from_RMOCFA['taken'].keys():
-                if (TEs_from_RMOCFA['taken'][key]['start']< start <TEs_from_RMOCFA['taken'][key]['end'] or 
-                    TEs_from_RMOCFA['taken'][key]['start']< end <TEs_from_RMOCFA['taken'][key]['end']):
+                if ( TEs_from_RMOCFA['taken'][key]['contig'] == contig and 
+                    (TEs_from_RMOCFA['taken'][key]['start']< start <TEs_from_RMOCFA['taken'][key]['end'] or 
+                    TEs_from_RMOCFA['taken'][key]['start']< end <TEs_from_RMOCFA['taken'][key]['end'] or
+                    start < TEs_from_RMOCFA['taken'][key]['start'] < end or
+                    start < TEs_from_RMOCFA['taken'][key]['end']  < end)):
                     ### since it is, keep the longer output (either repeatmasker or LTRharvest)
                     ### use the repeatmasker classification either way
                     ### put the looser in the 'discarded' dictionary
@@ -536,8 +580,11 @@ def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path,
             ## Check if the locus is already covered by previous results
             placed = False
             for key in TEs_from_RMOCFA['taken'].keys():
-                if (TEs_from_RMOCFA['taken'][key]['start']< start <TEs_from_RMOCFA['taken'][key]['end'] or 
-                    TEs_from_RMOCFA['taken'][key]['start']< end <TEs_from_RMOCFA['taken'][key]['end']):
+                if ( TEs_from_RMOCFA['taken'][key]['contig'] == contig and 
+                    (TEs_from_RMOCFA['taken'][key]['start']< start <TEs_from_RMOCFA['taken'][key]['end'] or 
+                    TEs_from_RMOCFA['taken'][key]['start']< end <TEs_from_RMOCFA['taken'][key]['end']or
+                    start < TEs_from_RMOCFA['taken'][key]['start'] < end or
+                    start < TEs_from_RMOCFA['taken'][key]['end']  < end)):
                     ### since it is, keep the longer output 
                     ### put the looser in the 'discarded' dictionary
                     if TEs_from_RMOCFA['taken'][key]['length'] < length:
@@ -558,4 +605,71 @@ def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path,
 
 # <codecell>
 
+def genome_codes_list(genomes_directory, mode='++'):
+    """ return a list of codes """
+    codes = []
+    for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+        if mode in line:
+            codes.append(line.split()[0])
+    return codes
+
+def genomes_dict(genomes_directory, mode='++'):
+    """ returns a dict, codes as keys, file names as values """
+    genomes = {}
+    for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+        if mode in line:
+            genomes[line.split()[0]] = line.split()[1]
+    return genomes
+
+def assembly_of(code, genomes_directory, generator=True):
+    """ returns a list of SeqRecords """
+    from Bio import SeqIO
+    records = SeqIO.parse(genomes_directory+genomes_dict(genomes_directory=genomes_directory)[code],'fasta')
+    if not generator:
+        records = list(records)
+    return records
+
+
+def codes_with_no_censor_lib(folders):
+    """ return codes with no denovo lib """
+    import os
+    missing_censor_results = []
+    for path in codes_with_folders(folders=folders):
+        pass
+        if not os.path.isfile(path+'consensi.fa.censor'):
+            missing_censor_results.append(path.split('/')[-2])
+    return missing_censor_results
+
+def codes_with_censor_lib(folders):
+    """ return codes with denovo lib """
+    import os
+    missing_censor_results = []
+    for path in codes_with_folders(folders=folders):
+        pass
+        if os.path.isfile(path+'consensi.fa.censor'):
+            missing_censor_results.append(path.split('/')[-2])
+    return missing_censor_results
+
+def make_non_redundant_lib(redundant_lib, non_redundant_lib,
+                           cluster_identity=0.9, uclust = 'uclust'):
+    """ makes a non redundant lib """
+    
+    import os
+    cline = uclust+' --sort '+redundant_lib+' --output seqs_sorted.fasta'
+    os.system(cline)
+    cline = uclust+' --input seqs_sorted.fasta --uc results.uc --id '+str(cluster_identity)
+    os.system(cline)
+    cline = uclust+' --uc2fasta results.uc --input seqs_sorted.fasta  --types S --output results.fasta'
+    os.system(cline)
+    from Bio import SeqIO
+    from Bio.Seq import Seq
+    records = list(SeqIO.parse('results.fasta', 'fasta'))
+    for r in records:
+        r.id = r.id.split('|')[2]
+        r.description = ' '.join(r.description.split()[1:])
+        alpha = r.seq.alphabet
+        r.seq = Seq(str(r.seq).replace('-',''), alphabet=alpha)
+        
+    SeqIO.write(records,non_redundant_lib,'fasta')
+    return non_redundant_lib
 
