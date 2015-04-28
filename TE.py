@@ -475,7 +475,7 @@ def parse_ocfa_elem_stored(pooled_RM_outputs_dir):
 
 # <codecell>
 
-def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_from_RMOCFA, serial):
+def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_from_RMOCFA, serial, sim_cutoff=85, l_cutoff=4000 ):
     import re
     from Bio import SeqIO
     
@@ -506,6 +506,8 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
             length = int(line.split('  ')[2])
             lower_tx_level = '?'
             higher_tx_level = 'LTR'
+            sim = float(line.split('  ')[-2])
+            l = int(line.split('  ')[2])
             TE = {'ref': reference,
                   'contig': contig,
                   'start': int(start),
@@ -527,7 +529,7 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
                     ### since it is, keep the longer output (either repeatmasker or LTRharvest)
                     ### use the repeatmasker classification either way
                     ### put the looser in the 'discarded' dictionary
-                    if TEs_from_RMOCFA['taken'][key]['length'] < length:
+                    if TEs_from_RMOCFA['taken'][key]['length'] < length and sim >= sim_cutoff and l >= l_cutoff:
                         #TE['element'] = TEs_from_RMOCFA['taken'][key]['lower_tx_level']
                         #TE['family'] = TEs_from_RMOCFA['taken'][key]['higher_tx_level']
                         TEs_from_RMOCFA['discarded'][key] = TEs_from_RMOCFA['taken'].pop(key, None)
@@ -536,12 +538,15 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
                         TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
                     placed = True
                     break
-            if not placed:
+            if not placed and sim >= sim_cutoff  and l >= l_cutoff:
                 ### Since it is not, add the LTRharvest TE to the 'taken' dict:
                 TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
-            serial +=1
-            if line_count%100 == 0:
-                print str(line_count)
+                serial +=1
+            else:
+                TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
+            serial +=1    
+            #if line_count%100 == 0:
+            #    print str(line_count)
             line_count += 1
     return TEs_from_RMOCFA, serial
 
@@ -551,7 +556,7 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
 
 # <codecell>
 
-def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path, TEs_from_RMOCFA, serial):
+def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path, TEs_from_RMOCFA, serial, score_cutoff=100):
     import re
     
     lines = open(TransposonPSI_output_filename, 'r').readlines()
@@ -569,6 +574,7 @@ def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path,
             length = end-start+1
             lower_tx_level = '?'
             higher_tx_level = line.split('\t')[1]
+            score = line.split('\t')[-1].rstrip()
             TE = {'ref': reference,
                   'contig': contig,
                   'start': int(start),
@@ -587,36 +593,38 @@ def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path,
                     start < TEs_from_RMOCFA['taken'][key]['end']  < end)):
                     ### since it is, keep the longer output 
                     ### put the looser in the 'discarded' dictionary
-                    if TEs_from_RMOCFA['taken'][key]['length'] < length:
+                    if TEs_from_RMOCFA['taken'][key]['length'] < length and score >= score_cutoff:
                         TEs_from_RMOCFA['discarded'][key] = TEs_from_RMOCFA['taken'].pop(key, None)
                         TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
                     else:
                         TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
                     placed = True
                     break
-            if not placed:
+            if not placed and score >= score_cutoff:
                 ### Since it is not, add the TransposonPSI TE to the 'taken' dict:
                 TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
+            else:
+                TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
             serial +=1
-            if line_count%100 == 0:
-                print str(line_count)
+            #if line_count%100 == 0:
+            #    print str(line_count)
             line_count += 1
     return TEs_from_RMOCFA
 
 # <codecell>
 
-def genome_codes_list(genomes_directory, mode='++'):
+def genome_codes_list(genomes_directory, mode='++', code_file = 'genome_assembly_files.csv'):
     """ return a list of codes """
     codes = []
-    for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+    for line in open(genomes_directory+code_file,'r').readlines():
         if mode in line:
             codes.append(line.split()[0])
     return codes
 
-def genomes_dict(genomes_directory, mode='++'):
+def genomes_dict(genomes_directory, mode='++', code_file = 'genome_assembly_files.csv'):
     """ returns a dict, codes as keys, file names as values """
     genomes = {}
-    for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+    for line in open(genomes_directory+code_file,'r').readlines():
         if mode in line:
             genomes[line.split()[0]] = line.split()[1]
     return genomes
