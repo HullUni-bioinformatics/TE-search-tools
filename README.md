@@ -62,7 +62,7 @@ Dictionary.
 ## Cookbook
 
 ### Run RepeatModeler
-*RepeatModeler will produce concensus sequeces representing clusters of denovo
+*RepeatModeler will produce consensus sequeces representing clusters of denovo
 repeat sequences, partialy classified by RepeatMasker*
 
 <pre>
