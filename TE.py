@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-# <nbformat>3.0</nbformat>
 
-# <markdowncell>
+# coding: utf-8
 
 # #README
 # 
@@ -30,12 +28,12 @@
 #     
 #     3. **Read TransposonPSI results and eliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
 #     
-# 8. **PRINT NON-REDUNDANT OUTPUT FILE, ONE PER PROGRAM**. **Input:** Dictionary. **Output:** Three text files.
+# 8. **PRINT NON-REDUNDANT OUTPUT FILE**. **Input:** Dictionary. **Output:** gff3 file.
 # 
 # ## Cookbook
 # 
 # ### Run RepeatModeler
-# *RepeatModeler will produce concensus sequeces representing clusters of denovo repeat sequences, partialy classified by RepeatMasker*  
+# *RepeatModeler will produce consensus sequeces representing clusters of denovo repeat sequences, partialy classified by RepeatMasker*  
 # 
 # <pre>
 # from TE import *
@@ -159,10 +157,21 @@
 #                                         serial)
 # 
 # </pre>
-# Redundencies are resolved by taking the longer match across the programs
-# This data structure is currently the end point of the workflow. I have functions I use to print and plot the data but they are not resonably abstract. I may include them soon. I am likely to include a gff or gtf formater as well.
+# 
+# Redundencies are resolved by taking the longer match across the programs  
+#   
+# ### Make a gff3 output file
+# 
+# <pre>
+# def write_gff(TEs, 'output.gff3', max_RM_OC_score=False)
+# </pre>
+# 
+# One Code concatenates the scores of the TEs it assembles. It does not compute a composite score. By default, the concatenated scores will be written to the gff3 file, although most gff tools don't supprt that.   
+#   
+# However, if `max_RM_OC_score==True`, only the highset score will be retained, in which case the file will be completely complient with the schema.
+# 
 
-# <codecell>
+# In[ ]:
 
 from Bio.Blast.Applications import NcbitblastnCommandline, NcbipsiblastCommandline
 from Bio.Blast import NCBIXML
@@ -175,12 +184,11 @@ from Bio.Alphabet import IUPAC
 from Bio.Blast import NCBIXML
 import re, os, inspect, subprocess, warnings, sys
 
-# <markdowncell>
 
 # ReapeatMasker command line function
 # ===================================
 
-# <codecell>
+# In[1]:
 
 def code_sequence_ids(in_fasta_file_name, codes_log_filename, out_fasta_file_name, genome_code):
           from Bio import SeqIO
@@ -234,11 +242,10 @@ def run_repeat_masker(query, RepeatMasker = '/home/amir/homeWork/RM_package/Repe
     print cline
     return os.system(cline), query + '.out' 
 
-# <markdowncell>
 
 # # RepeatModeler functions
 
-# <codecell>
+# In[ ]:
 
 def make_repeatmodeler_database(name, input_filename, BuildDatabase='/home/amir/homeWork/RM_package/RepeatModeler/BuildDatabase',
         dir=False, engine='ncbi', batch=False):
@@ -287,11 +294,10 @@ def find_result_dirs_per_genome_code():
 
 # {'Gros': 'RM_6449.WedMay210843002014_Gros'}
 
-# <markdowncell>
 
 # #Parse online CENSOR results
 
-# <codecell>
+# In[ ]:
 
 def parse_online_censor(filename, pident_cutoff, score_cutoff):
     censor_classifications = {}
@@ -348,11 +354,10 @@ def put_censor_classification_in_repeatmodeler_lib(input_filename, censor_classi
             RM_CENCOR_lib.append(record)
     SeqIO.write(RM_CENCOR_lib,output_filename,'fasta')
 
-# <markdowncell>
 
 # # One Code To Find Them All
 
-# <codecell>
+# In[ ]:
 
 def run_OneCodeToFindThemAll(pooled_RM_outputs_dir, #The directory containing repeatmasker .out files or a path to a specific .out file
                             ltr_dict_filename, # name of intermediate file
@@ -374,11 +379,10 @@ def run_OneCodeToFindThemAll(pooled_RM_outputs_dir, #The directory containing re
     cline +=' > '+output_filename
     os.system(cline)
 
-# <markdowncell>
 
 # # LTRharvest
 
-# <codecell>
+# In[ ]:
 
 def run_LTRharvest(input_filename, index_name, output_name):
     cline = 'gt suffixerator -db '+input_filename+' -indexname '+index_name+' -tis -suf -lcp -des -ssp -sds -dna'
@@ -386,26 +390,22 @@ def run_LTRharvest(input_filename, index_name, output_name):
     cline = 'gt ltrharvest -index '+index_name+' -mintsd 5 -maxtsd 100 > '+output_name
     os.system(cline)
 
-# <markdowncell>
 
 # # TransposonPSI
 
-# <codecell>
+# In[ ]:
 
 def run_TransposonPSI(input_filename,
                   TPSI = 'perl /home/amir/homeWork/RM_package/TransposonPSI_08222010/transposonPSI.pl'):
     cline = (TPSI+' '+input_filename+' nuc')
     os.system(cline)
 
-# <markdowncell>
 
 # # Unite OCTFTA with LTRharvest and TransposonPSI
 
-# <markdowncell>
-
 # ## Parse OCTFTA elem_stored.csv
 
-# <codecell>
+# In[ ]:
 
 def parse_ocfa_elem_stored(pooled_RM_outputs_dir):
 
@@ -469,11 +469,10 @@ def parse_ocfa_elem_stored(pooled_RM_outputs_dir):
         TEs['discarded'].update(discarded_elements)
     return TEs, serial
 
-# <markdowncell>
 
 # ## Get loci from the LTRharvest output only if they are longer than ones found with repeatmasker for the same locus
 
-# <codecell>
+# In[ ]:
 
 def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_from_RMOCFA, serial, sim_cutoff=85, l_cutoff=4000 ):
     import re
@@ -550,11 +549,10 @@ def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_f
             line_count += 1
     return TEs_from_RMOCFA, serial
 
-# <markdowncell>
 
 # ## Get loci from the TransposonPSI output only if they are longer than ones found with repeatmasker for the same locus
 
-# <codecell>
+# In[ ]:
 
 def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path, TEs_from_RMOCFA, serial, score_cutoff=100):
     import re
@@ -611,10 +609,103 @@ def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path,
             line_count += 1
     return TEs_from_RMOCFA
 
-# <codecell>
+
+# ## TE dict to gff3
+
+# In[ ]:
+
+def write_gff(TEs, gff_filename, max_RM_OC_score=False): 
+
+    gff_pattern = "%s\t%s\ttransposable_element\t%i\t%i\t%s\t%s\t.\tID=%s;Name=%s;Note=%s\n" 
+    #%(contig, program, start, end, score, strand, ID, name, note)
+
+    
+    # Make the regions bit for the top of the file
+    regions = {}
+
+    for e in TEs['taken']:
+        record = TEs['taken'][e]
+        contig = record['contig']
+        start, end = record['start'], record['end']
+        if start > end:
+            start, end = end, start
+            
+        # Each contig has to be included once and encopass all the TEs
+        # that are on it
+        if not contig in regions:
+            regions[contig] = [start,end]
+        else:
+            if start < regions[contig][0]:
+                regions[contig][0] = start
+            if end > regions[contig][1]:
+                regions[contig][1] = end
+
+    regions = sorted(regions.items(), key = lambda i: i[0])
+    regions = ["##sequence-region   %s %i %i\n"%(j[0],j[1][0],j[1][1]) for j in regions]
+
+    
+    # Write the file
+    with open(gff_filename,'wt') as gff:
+        # Write the regions
+        gff.write('##gff-version 3\n')
+        for l in regions:
+            gff.write(l)
+        # Write the matches
+        for e in TEs['taken']:
+            record = TEs['taken'][e]
+            contig = record['contig']
+            program = record['ref']['program']
+            if program == 'RMOCFA':
+                program = 'Repeatmasker-OneCode'
+            start, end = record['start'], record['end']
+            # make sure start is the smaller coordinate
+            if start > end:
+                start, end = end, start
+            ID = e
+            name = record['higher_tx_level']
+            note = record['lower_tx_level']
+            if 'element' in note:
+                note = '?'
+            score, strand = '.', '.'
+            ref = record['ref']['record'].rstrip()
+            if program == 'TransposonPSI':
+                score, strand = ref.split('\t')[-1], ref.split('\t')[-2]
+            elif program == 'Repeatmasker-OneCode':
+                score, strand = ref.split('\t')[0], ref.split('\t')[8]
+                if max_RM_OC_score:
+                    score = max([int(s) for s in score.split('/')])
+            strand = strand.replace('C','-')
+            score = score.replace('#','')
+            gff.write(gff_pattern%(contig, program, start, end, score, strand, ID, name, note))
+
+
+# ## Utils for multiple genome assembly analyses
+
+# In[ ]:
 
 def genome_codes_list(genomes_directory, mode='++', code_file = 'genome_assembly_files.csv'):
-    """ return a list of codes """
+    """ return a list of codes 
+    genomes_directory: path to the directory containing the genome assemblies
+    code file: contains code and genome assembly file names (wo path).
+    It is formated as follows:
+    
+    <code><space><assembly filename><space><mode><newline>
+    
+    mode is any symbol grouping the filenames. It is nested. 
+    examples:
+    
+    mode = '$'
+    
+    code1 filename1 $ -> will be read
+    code2 filename2 $$ -> will be read
+    code3 filename3 $+ -> will be read
+    code4 filename4 + -> will not be read
+    
+    mode = '$$'
+    
+    with the same example as above, only code2 will be read.
+    
+    """
     codes = []
     for line in open(genomes_directory+code_file,'r').readlines():
         if mode in line:
@@ -629,10 +720,12 @@ def genomes_dict(genomes_directory, mode='++', code_file = 'genome_assembly_file
             genomes[line.split()[0]] = line.split()[1]
     return genomes
 
-def assembly_of(code, genomes_directory, generator=True):
-    """ returns a list of SeqRecords """
+def assembly_of(code, genomes_directory, generator=True, code_file = 'genome_assembly_files.csv', mode='++'):
+    """ returns a list of SeqRecords 
+    which are the contig of the assembly.
+    """
     from Bio import SeqIO
-    records = SeqIO.parse(genomes_directory+genomes_dict(genomes_directory=genomes_directory)[code],'fasta')
+    records = SeqIO.parse(genomes_directory+genomes_dict(genomes_directory=genomes_directory, code_file=code_file, mode='++')[code],'fasta')
     if not generator:
         records = list(records)
     return records
@@ -649,7 +742,7 @@ def codes_with_no_censor_lib(folders):
     return missing_censor_results
 
 def codes_with_censor_lib(folders):
-    """ return codes with denovo lib """
+    """ return codes that have a censor denovo lib """
     import os
     missing_censor_results = []
     for path in codes_with_folders(folders=folders):
