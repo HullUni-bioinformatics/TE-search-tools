@@ -5,65 +5,33 @@
 
 ## Overview
 
-These are a set of wrappers compossing a pipline which finds transposable
-elements in a genome assembly. The pipline includes the following steps:
+These are a set of wrappers compossing a pipline which finds transposable elements in a genome assembly. The pipline includes the following steps:  
 
-1. **MAKE A DENOVO LIB WITH REPEAT-MODELER**. **Input:** genome assembly,
-**Output:** a library containing partially classified consensus sequences of
-*de-novo* repeat clusters. **Program:**
-[RepeatModeler](http://www.repeatmasker.org/RepeatModeler.html) and all its many
-dependencies.
+1. **MAKE A DENOVO LIB WITH REPEAT-MODELER**. **Input:** genome assembly, **Output:** a library containing partially classified consensus sequences of *de-novo* repeat clusters. **Program:** [RepeatModeler](http://www.repeatmasker.org/RepeatModeler.html) and all its many dependencies.
 
-2. **ADD CLASSIFICATIONS FROM THE ONLINE
-[CENSOR](http://www.girinst.org/censor/) TEXT OUTPUT TO THE REPEAT LIB**.
-**Input:** A) a library containing partially classified consensus sequences of
-*de-novo* repeat clusters. B) text file containing the online censor results.
-**Output:** a library containing more classified consensus sequences of *de-
-novo* repeat clusters (still some unknow classifications)
+2. **ADD CLASSIFICATIONS FROM THE ONLINE [CENSOR](http://www.girinst.org/censor/) TEXT OUTPUT TO THE REPEAT LIB**. **Input:** A) a library containing partially classified consensus sequences of *de-novo* repeat clusters. B) text file containing the online censor results. **Output:** a library containing more classified consensus sequences of *de-novo* repeat clusters (still some unknow classifications)
 
-3. **SEARCH FOR TEs IN THE GENOME ASSEMBLY WITH REPEAT-MASKER USING THE DENOVO
-LIB**. **Input:** genome assembly. **Output:** text file with a .out suffix
-containing classified TE loci with some redundancies. **Program:**
-[RepeatMasker](http://www.repeatmasker.org/RMDownload.html), which is a
-dependency of RepeatModeler.
+3. **SEARCH FOR TEs IN THE GENOME ASSEMBLY WITH REPEAT-MASKER USING THE DENOVO LIB**. **Input:** genome assembly. **Output:** text file with a .out suffix containing classified TE loci with some redundancies. **Program:** [RepeatMasker](http://www.repeatmasker.org/RMDownload.html), which is a dependency of RepeatModeler.
 
-4. **ELIMINATE REDUNDANCIES IN THE REPEAT-MASKER RESULTS**. **Input:** text file
-with a .out suffix containing classified TE loci with some redundancies, or a
-directory with several .out files. **Output:** elem_stored.csv files, one per
-contig. Also generate other files per contig. Puts them in the same folder as
-the .out files used as input. **Program:** [One Code To Find Them
-All](http://www.biomedcentral.com/content/pdf/1759-8753-5-13.pdf).
+4. **ELIMINATE REDUNDANCIES IN THE REPEAT-MASKER RESULTS**. **Input:** text file with a .out suffix containing classified TE loci with some redundancies, or a directory with several .out files. **Output:** elem_stored.csv files, one per contig. Also generate other files per contig. Puts them in the same folder as the .out files used as input. **Program:** [One Code To Find Them All](http://www.biomedcentral.com/content/pdf/1759-8753-5-13.pdf).
 
-5. **INDEPENDENT SEARCH FOR LTR ELEMENTS BASED ON SECONDARY STRUCTURE**.
-**Input:** genome assembly, **Output:** text file with loci. **Program:**
-[LTRharvest](http://www.zbh.uni-hamburg.de/?id=206)
+5. **INDEPENDENT SEARCH FOR LTR ELEMENTS BASED ON SECONDARY STRUCTURE**. **Input:** genome assembly, **Output:** text file with loci. **Program:** [LTRharvest](http://www.zbh.uni-hamburg.de/?id=206)
 
-6. **INDEPENDENT SEARCH FOR ELEMENTS BASED ON CODING SEQUENCES**. **Input:**
-genome assembly, **Output:** text file with loci. **Program:**
-[TransposonPSI](http://transposonpsi.sourceforge.net/)
+6. **INDEPENDENT SEARCH FOR ELEMENTS BASED ON CODING SEQUENCES**. **Input:** genome assembly, **Output:** text file with loci. **Program:** [TransposonPSI](http://transposonpsi.sourceforge.net/)
 
 7. **ELIMINATE REDUNDANCIES AMONG PROGRAMS**
-    1. **Read OneCodeTo... results**. **Input:** Directory containing
-elem_stored.csv files. **Output:** Dictionary, Integer: num of elements in
-Dictionary.
-
-    2. **Read LTRharvest results and eliminate redundancies chosing the longer
-match between the programs**. **Input:** Dictionary, Integer: num of elements in
-Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
-
-    3. **Read TransposonPSI results and eliminate redundancies chosing the
-longer match between the programs**. **Input:** Dictionary, Integer: num of
-elements in Dictionary. **Output:** Dictionary, Integer: num of elements in
-Dictionary.
-
-8. **PRINT NON-REDUNDANT OUTPUT FILE, ONE PER PROGRAM**. **Input:** Dictionary.
-**Output:** Three text files.
+    1. **Read OneCodeTo... results**. **Input:** Directory containing elem_stored.csv files. **Output:** Dictionary, Integer: num of elements in Dictionary.
+    
+    2. **Read LTRharvest results and eliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
+    
+    3. **Read TransposonPSI results and eliminate redundancies chosing the longer match between the programs**. **Input:** Dictionary, Integer: num of elements in Dictionary. **Output:** Dictionary, Integer: num of elements in Dictionary.
+    
+8. **PRINT NON-REDUNDANT OUTPUT FILE**. **Input:** Dictionary. **Output:** gff3 file.
 
 ## Cookbook
 
 ### Run RepeatModeler
-*RepeatModeler will produce consensus sequeces representing clusters of denovo
-repeat sequences, partialy classified by RepeatMasker*
+*RepeatModeler will produce consensus sequeces representing clusters of denovo repeat sequences, partialy classified by RepeatMasker*  
 
 <pre>
 from TE import *
@@ -71,20 +39,16 @@ from TE import *
 make_repeatmodeler_database(name='a_database',
                             input_filename='genome_assembly_file')
 # use the BuildDatabase keyword to specify the path to your executable
-
-run_repeatmodeler('a_database')
+  
+run_repeatmodeler('a_database') 
 # use the RepeatModeler keyword to specify the path to your executable
 </pre>
 
-The default engine is ncbi and the default lib is eukaryota. RepeatModeler
-should make a folder in the CWD with the file **'consensi.fa.classified'** in
-it. It wil write alot of temp files so don't run in Dropbox.
+The default engine is ncbi and the default lib is eukaryota. RepeatModeler should make a folder in the CWD with the file **'consensi.fa.classified'** in it. It wil write alot of temp files so don't run in Dropbox.
 
-### Run Censor online and add the classifications to your denovo library
-(optional)
+### Run Censor online and add the classifications to your denovo library (optional)
 
-*Copy and paste the results from the webpage into a text file, here named
-'Censor_results'.*
+*Copy and paste the results from the webpage into a text file, here named 'Censor_results'.*
 
 <pre>
 censor_classifications = parse_online_censor('Censor_results')
@@ -99,70 +63,53 @@ put_censor_classification_in_repeatmodeler_lib('consensi.fa.classified',
 </pre>
 
 ### Run RepeatMasker using the denovo lib
-*Some contig names are too long to be parsed in RepeatMasker. However it is
-possible to replace the names with aliases and have the translations in a file
-using the first function in this section. It is important to remember to use the
-aliased genome assembly in the other programs as well, so that redundancies can
-be resolved.*
-
+*Some contig names are too long to be parsed in RepeatMasker. However it is possible to replace the names with aliases and have the translations in a file using the first function in this section. It is important to remember to use the aliased genome assembly in the other programs as well, so that redundancies can be resolved.*
+  
 <pre>
 code_sequence_ids('genome_assembly',
                   'names_translations',
                   'coded_genome_assembly',
                   'prefix_for_aliases')
 
-run_repeat_masker('coded_genome_assembly', lib = 'consensi.fa.censor',
-species=None)
+run_repeat_masker('coded_genome_assembly', lib = 'consensi.fa.censor', species=None) 
 </pre>
-Aliases: if you give 'Mflo' as a prefix, the contig aliases will be 'Mflo_0',
-'Mflo_1' ...
+Aliases: if you give 'Mflo' as a prefix, the contig aliases will be 'Mflo_0', 'Mflo_1' ...  
 The run_repeat_masker function accepts all the RepeatMasker keywards.
-RepeatModeler will write temporary files in a new folder in the CWD so do not
-run in Dropbox. The output files (most importantly the .out files) will be in
-the same directory as the input genome assembly.
+RepeatModeler will write temporary files in a new folder in the CWD so do not run in Dropbox. The output files (most importantly the .out files) will be in the same directory as the input genome assembly.
 
 
 ### Ged rid of redundancies in the .out file
-*Two type of rdundancies are possible: 1) within a run, the same locus may have
-one classification and subsections of it may have other classifications. 2) you
-may want to make an additional run of RepeatMasker using the eukaryota library
-instead of the denovo lib. Both types are handled in this stage. You need to put
-the .out files of all the RepeatMasker runs in one directory and point the
-function to that directory.*
+*Two type of rdundancies are possible: 1) within a run, the same locus may have one classification and subsections of it may have other classifications. 2) you may want to make an additional run of RepeatMasker using the eukaryota library instead of the denovo lib. Both types are handled in this stage. You need to put the .out files of all the RepeatMasker runs in one directory and point the function to that directory.*
 
 
 <pre>
 run_OneCodeToFindThemAll('/path/to/RM/.out/files/',
-                         'name_of_intermediate_file',
-                         'octfta_output_filename',
+                         'name_of_intermediate_file', 
+                         'octfta_output_filename', 
                          'coded_genome_assembly',
                           build_dictionary = 'build_dictionary.pl',
                           octfta = 'one_code_to_find_them_all.pl'
                           )
 </pre>
-As before, the default path specified in the build_dictionary keyword is the
-local path on my machine
+As before, the default path specified in the build_dictionary keyword is the local path on my machine
 
 
 ### Run independent element searches using alternative approaches
-*LTRharvest will search for LTR secondary structures and TransposonPSI will do a
-blastx search against TE protein CDDs*
+*LTRharvest will search for LTR secondary structures and TransposonPSI will do a blastx search against TE protein CDDs*
 <pre>
-run_LTRharvest('coded_genome_asembly',
-               'name_of_intermideate_file',
-               'ltrharvest_output')
+run_LTRharvest('coded_genome_asembly', 
+               'name_of_intermideate_file', 
+               'ltrharvest_output')                          
 
 run_TransposonPSI('coded_genome_asembly',
                   TPSI = 'perl transposonPSI.pl')
 </pre>
 The path for TransposonPSI is pointed to by the TPSI keyword.
 
-### Make a non-redundant data structure representing the results of all the
-searches
+### Make a non-redundant data structure representing the results of all the searches
 *The data structure is a dictionary with the following structure*:
 <pre>
-TEs = { 'taken': { 'element0': {'ref': {'record': 'the line from the program's
-output',
+TEs = { 'taken': { 'element0': {'ref': {'record': 'the line from the program's output',
                                         'program': 'the program's name'},
                                 'contig': 'the contig's name',
                                 'start': integer,
@@ -172,12 +119,12 @@ output',
                                 'higher_tx_level': 'class or order or family'
                                 },
 
-
+ 
                    'element1': {...},
-
-
+                   
+                   
                    'element2': {...},
-
+                   
                    ...
 
 
@@ -189,8 +136,7 @@ output',
 
       }
 </pre>
-The internal structure repeats itself within the 'discarded' key. The element
-number is unique across the taken and discarded elements.
+The internal structure repeats itself within the 'discarded' key. The element number is unique across the taken and discarded elements.
 
 <pre>
 
@@ -198,22 +144,30 @@ number is unique across the taken and discarded elements.
 TEs, serial = parse_ocfa_elem_stored('/path/to/RM/.elem_stored.csv'/files/')
 
 \# adding LTRharvest results to the data structure
-TEs, serial = integrate_ltrharvest_to_RM_TEs('ltrharvest_output',
-                                             'coded_genome_assembly',
-                                             serial)
-
-\# adding TransposonPSI results to the data structure
-TEs = integrate_TransposonPSI_to_RM_TEs('NameOfInput.TPSI.allHits.chains.bestPer
-Locus',
-                                        'coded_genome_asembly',
-                                        TEs,
+TEs, serial = integrate_ltrharvest_to_RM_TEs('ltrharvest_output',      
+                                             'coded_genome_assembly',  
+                                             serial)                      
+                                                                       
+\# adding TransposonPSI results to the data structure                                                                 
+TEs = integrate_TransposonPSI_to_RM_TEs('NameOfInput.TPSI.allHits.chains.bestPerLocus', 
+                                        'coded_genome_asembly', 
+                                        TEs, 
                                         serial)
 
 </pre>
-Redundencies are resolved by taking the longer match across the programs
-This data structure is currently the end point of the workflow. I have functions
-I use to print and plot the data but they are not resonably abstract. I may
-include them soon. I am likely to include a gff or gtf formater as well.
+
+Redundencies are resolved by taking the longer match across the programs  
+  
+### Make a gff3 output file
+
+<pre>
+def write_gff(TEs, 'output.gff3', max_RM_OC_score=False)
+</pre>
+
+One Code concatenates the scores of the TEs it assembles. It does not compute a composite score. By default, the concatenated scores will be written to the gff3 file, although most gff tools don't supprt that.   
+  
+However, if `max_RM_OC_score==True`, only the highset score will be retained, in which case the file will be completely complient with the schema.
+
 
 
     from Bio.Blast.Applications import NcbitblastnCommandline, NcbipsiblastCommandline
@@ -498,11 +452,10 @@ ReapeatMasker command line function
             TEs['discarded'].update(discarded_elements)
         return TEs, serial
 
-## Get loci from the LTRharvest output only if they are longer than ones found
-with repeatmasker for the same locus
+## Get loci from the LTRharvest output only if they are longer than ones found with repeatmasker for the same locus
 
 
-    def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_from_RMOCFA, serial):
+    def integrate_ltrharvest_to_RM_TEs(LTRharvest_output_filename,genome_path, TEs_from_RMOCFA, serial, sim_cutoff=85, l_cutoff=4000 ):
         import re
         from Bio import SeqIO
         
@@ -533,6 +486,8 @@ with repeatmasker for the same locus
                 length = int(line.split('  ')[2])
                 lower_tx_level = '?'
                 higher_tx_level = 'LTR'
+                sim = float(line.split('  ')[-2])
+                l = int(line.split('  ')[2])
                 TE = {'ref': reference,
                       'contig': contig,
                       'start': int(start),
@@ -554,7 +509,7 @@ with repeatmasker for the same locus
                         ### since it is, keep the longer output (either repeatmasker or LTRharvest)
                         ### use the repeatmasker classification either way
                         ### put the looser in the 'discarded' dictionary
-                        if TEs_from_RMOCFA['taken'][key]['length'] < length:
+                        if TEs_from_RMOCFA['taken'][key]['length'] < length and sim >= sim_cutoff and l >= l_cutoff:
                             #TE['element'] = TEs_from_RMOCFA['taken'][key]['lower_tx_level']
                             #TE['family'] = TEs_from_RMOCFA['taken'][key]['higher_tx_level']
                             TEs_from_RMOCFA['discarded'][key] = TEs_from_RMOCFA['taken'].pop(key, None)
@@ -563,20 +518,22 @@ with repeatmasker for the same locus
                             TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
                         placed = True
                         break
-                if not placed:
+                if not placed and sim >= sim_cutoff  and l >= l_cutoff:
                     ### Since it is not, add the LTRharvest TE to the 'taken' dict:
                     TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
-                serial +=1
-                if line_count%100 == 0:
-                    print str(line_count)
+                    serial +=1
+                else:
+                    TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
+                serial +=1    
+                #if line_count%100 == 0:
+                #    print str(line_count)
                 line_count += 1
         return TEs_from_RMOCFA, serial
 
-## Get loci from the TransposonPSI output only if they are longer than ones
-found with repeatmasker for the same locus
+## Get loci from the TransposonPSI output only if they are longer than ones found with repeatmasker for the same locus
 
 
-    def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path, TEs_from_RMOCFA, serial):
+    def integrate_TransposonPSI_to_RM_TEs(TransposonPSI_output_filename,genome_path, TEs_from_RMOCFA, serial, score_cutoff=100):
         import re
         
         lines = open(TransposonPSI_output_filename, 'r').readlines()
@@ -594,6 +551,7 @@ found with repeatmasker for the same locus
                 length = end-start+1
                 lower_tx_level = '?'
                 higher_tx_level = line.split('\t')[1]
+                score = line.split('\t')[-1].rstrip()
                 TE = {'ref': reference,
                       'contig': contig,
                       'start': int(start),
@@ -612,43 +570,137 @@ found with repeatmasker for the same locus
                         start < TEs_from_RMOCFA['taken'][key]['end']  < end)):
                         ### since it is, keep the longer output 
                         ### put the looser in the 'discarded' dictionary
-                        if TEs_from_RMOCFA['taken'][key]['length'] < length:
+                        if TEs_from_RMOCFA['taken'][key]['length'] < length and score >= score_cutoff:
                             TEs_from_RMOCFA['discarded'][key] = TEs_from_RMOCFA['taken'].pop(key, None)
                             TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
                         else:
                             TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
                         placed = True
                         break
-                if not placed:
+                if not placed and score >= score_cutoff:
                     ### Since it is not, add the TransposonPSI TE to the 'taken' dict:
                     TEs_from_RMOCFA['taken']['element'+str(serial)] = TE
+                else:
+                    TEs_from_RMOCFA['discarded']['element'+str(serial)] = TE
                 serial +=1
-                if line_count%100 == 0:
-                    print str(line_count)
+                #if line_count%100 == 0:
+                #    print str(line_count)
                 line_count += 1
         return TEs_from_RMOCFA
 
+## TE dict to gff3
 
-    def genome_codes_list(genomes_directory, mode='++'):
-        """ return a list of codes """
+
+    def write_gff(TEs, gff_filename, max_RM_OC_score=False): 
+    
+        gff_pattern = "%s\t%s\ttransposable_element\t%i\t%i\t%s\t%s\t.\tID=%s;Name=%s;Note=%s\n" 
+        #%(contig, program, start, end, score, strand, ID, name, note)
+    
+        
+        # Make the regions bit for the top of the file
+        regions = {}
+    
+        for e in TEs['taken']:
+            record = TEs['taken'][e]
+            contig = record['contig']
+            start, end = record['start'], record['end']
+            if start > end:
+                start, end = end, start
+                
+            # Each contig has to be included once and encopass all the TEs
+            # that are on it
+            if not contig in regions:
+                regions[contig] = [start,end]
+            else:
+                if start < regions[contig][0]:
+                    regions[contig][0] = start
+                if end > regions[contig][1]:
+                    regions[contig][1] = end
+    
+        regions = sorted(regions.items(), key = lambda i: i[0])
+        regions = ["##sequence-region   %s %i %i\n"%(j[0],j[1][0],j[1][1]) for j in regions]
+    
+        
+        # Write the file
+        with open(gff_filename,'wt') as gff:
+            # Write the regions
+            gff.write('##gff-version 3\n')
+            for l in regions:
+                gff.write(l)
+            # Write the matches
+            for e in TEs['taken']:
+                record = TEs['taken'][e]
+                contig = record['contig']
+                program = record['ref']['program']
+                if program == 'RMOCFA':
+                    program = 'Repeatmasker-OneCode'
+                start, end = record['start'], record['end']
+                # make sure start is the smaller coordinate
+                if start > end:
+                    start, end = end, start
+                ID = e
+                name = record['higher_tx_level']
+                note = record['lower_tx_level']
+                if 'element' in note:
+                    note = '?'
+                score, strand = '.', '.'
+                ref = record['ref']['record'].rstrip()
+                if program == 'TransposonPSI':
+                    score, strand = ref.split('\t')[-1], ref.split('\t')[-2]
+                elif program == 'Repeatmasker-OneCode':
+                    score, strand = ref.split('\t')[0], ref.split('\t')[8]
+                    if max_RM_OC_score:
+                        score = max([int(s) for s in score.split('/')])
+                strand = strand.replace('C','-')
+                score = score.replace('#','')
+                gff.write(gff_pattern%(contig, program, start, end, score, strand, ID, name, note))
+
+## Utils for multiple genome assembly analyses
+
+
+    def genome_codes_list(genomes_directory, mode='++', code_file = 'genome_assembly_files.csv'):
+        """ return a list of codes 
+        genomes_directory: path to the directory containing the genome assemblies
+        code file: contains code and genome assembly file names (wo path).
+        It is formated as follows:
+        
+        <code><space><assembly filename><space><mode><newline>
+        
+        mode is any symbol grouping the filenames. It is nested. 
+        examples:
+        
+        mode = '$'
+        
+        code1 filename1 $ -> will be read
+        code2 filename2 $$ -> will be read
+        code3 filename3 $+ -> will be read
+        code4 filename4 + -> will not be read
+        
+        mode = '$$'
+        
+        with the same example as above, only code2 will be read.
+        
+        """
         codes = []
-        for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+        for line in open(genomes_directory+code_file,'r').readlines():
             if mode in line:
                 codes.append(line.split()[0])
         return codes
     
-    def genomes_dict(genomes_directory, mode='++'):
+    def genomes_dict(genomes_directory, mode='++', code_file = 'genome_assembly_files.csv'):
         """ returns a dict, codes as keys, file names as values """
         genomes = {}
-        for line in open(genomes_directory+'genome_assembly_files.csv','r').readlines():
+        for line in open(genomes_directory+code_file,'r').readlines():
             if mode in line:
                 genomes[line.split()[0]] = line.split()[1]
         return genomes
     
-    def assembly_of(code, genomes_directory, generator=True):
-        """ returns a list of SeqRecords """
+    def assembly_of(code, genomes_directory, generator=True, code_file = 'genome_assembly_files.csv', mode='++'):
+        """ returns a list of SeqRecords 
+        which are the contig of the assembly.
+        """
         from Bio import SeqIO
-        records = SeqIO.parse(genomes_directory+genomes_dict(genomes_directory=genomes_directory)[code],'fasta')
+        records = SeqIO.parse(genomes_directory+genomes_dict(genomes_directory=genomes_directory, code_file=code_file, mode='++')[code],'fasta')
         if not generator:
             records = list(records)
         return records
@@ -665,7 +717,7 @@ found with repeatmasker for the same locus
         return missing_censor_results
     
     def codes_with_censor_lib(folders):
-        """ return codes with denovo lib """
+        """ return codes that have a censor denovo lib """
         import os
         missing_censor_results = []
         for path in codes_with_folders(folders=folders):
