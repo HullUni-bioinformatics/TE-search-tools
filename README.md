@@ -160,6 +160,8 @@ Redundencies are resolved by taking the longer match across the programs
   
 ### Make a gff3 output file
 
+**Don't forget to replace the coded contig names with the real ones, based on the content of the file `names_translations`. You can either preprocess the `TEs` dictionary or postprocess the gff file. There is no function to do this.**
+
 <pre>
 def write_gff(TEs, 'output.gff3', max_RM_OC_score=False)
 </pre>
